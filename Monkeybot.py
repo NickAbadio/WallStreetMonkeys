@@ -62,16 +62,32 @@ async def on_ready():
 
 @client.event       
 async def on_message(message):
+
     print(message)
     if message.author == client.user:
         return
-    else:
+
+    elif (message.content.startswith('$User')):
+        embed = discord.Embed(
+        title = message.author,
+        description = users[str(message.author.id)]["level"],
+        colour = discord.Colour.blue()
+        )
+        print(message.channel)
+        url = message.author.avatar_url
+        embed.set_thumbnail(url=url)
+        embed.add_field(name='XP', value=users[str(message.author.id)]["XP"], inline=True)
+        embed.add_field(name='XP needed', value=users[str(message.author.id)]["neededXP"], inline=True)
+
+        await message.channel.send(embed=embed)
+    else:   
         print(message.id)
         AddXP(users, message.author.id)
-        #print(users)
         UpdateJson(users)
         await message.channel.send(":eagle:")
 
+
+
     
-       
+
 client.run(TOKEN)
