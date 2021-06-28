@@ -1,12 +1,18 @@
 import os
 import discord
 import json
+import XPCommands
 from discord import user
 from dotenv import load_dotenv
- 
+
+#====================================================#
+#             Initial loading of the bot             #
+#====================================================#
+
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN') #gets
 GUILD = os.getenv('DISCORD_GUILD')
+
 
 intents = discord.Intents.all() #gives discord bot the ability to get any info from the server
 client = discord.Client(intents=intents)
@@ -21,37 +27,6 @@ with open("servers.json") as f:
     users = json.load(f)
 
 
-#updates the servers.json file with new data
-def UpdateJson(users):
-    with open("servers.json","w") as f:
-        json.dump(users, f, indent=2)
-        print("Updated servers.json")
-
-#adds xp to users based on certian perams
-
-def AddXP(users, id, XPRate):
-    xp = users[str(id)]["XP"] #gets current xp from the user
-    needed = users[str(id)]["neededXP"] #gets current needed xp till next level up
-    level = users[str(id)]["level"] #gets current users level
-    print(xp)
-    print(XPRate)
-
-    users[str(id)]["XP"] = xp+XPRate
-    
-
-    if((needed-XPRate) <= 0): #checks if a level up is requried else just subtracts from from neededXP
-        users[str(id)]["level"] = level + 1
-        users[str(id)]["neededXP"] = 20*(level + 1)
-    else:
-        users[str(id)]["neededXP"] = needed - XPRate
-
-
-   
-
-
-
-
-
 @client.event
 async def on_ready():   #called on start of bot to make sure all users 
     guild = client.get_guild(849714682804961301) #gets WSM discord id (CURRENTLY USING BOT TESTING CHANNEL NOT WSM)
@@ -63,9 +38,45 @@ async def on_ready():   #called on start of bot to make sure all users
                 "XP": 0,
                 "neededXP": 10,
             }
-    
-    
-    
+
+
+
+
+
+
+#====================================================#
+#                   User Functions                   #
+#====================================================#
+
+#updates the servers.json file with new data
+def UpdateJson(users):
+    with open("servers.json","w") as f:
+        json.dump(users, f, indent=2)
+        print("Updated servers.json")
+
+
+def EmbedUserInfoMessage(message):
+    embed = discord.Embed(
+        title = message.author, 
+        description = users[str(message.author.id)]["level"],
+        colour = discord.Colour.blue()
+        )
+    url = message.author.avatar_url
+    embed.set_thumbnail(url=url)
+    embed.add_field(name='XP', value=users[str(message.author.id)]["XP"], inline=True)
+    embed.add_field(name='XP needed', value=users[str(message.author.id)]["neededXP"], inline=True)
+
+    return embed
+
+        
+
+
+
+
+#====================================================#
+#                   Discord Message Commands         #
+#====================================================#
+
 
 @client.event       
 async def on_message(message): #on a new message in discord chat this is called
@@ -75,20 +86,13 @@ async def on_message(message): #on a new message in discord chat this is called
         return
 
     elif (message.content.startswith('$User')): #command to print user info 
-        embed = discord.Embed(
-        title = message.author,
-        description = users[str(message.author.id)]["level"],
-        colour = discord.Colour.blue()
-        )
-        print(message.channel)
-        url = message.author.avatar_url
-        embed.set_thumbnail(url=url)
-        embed.add_field(name='XP', value=users[str(message.author.id)]["XP"], inline=True)
-        embed.add_field(name='XP needed', value=users[str(message.author.id)]["neededXP"], inline=True)
+        embed = EmbedUserInfoMessage(message)
 
         await message.channel.send(embed=embed)
+
+
     else:   #command to add xp if the user command wasnt called and update the json
-        AddXP(users, message.author.id, channelXPRates[str(message.channel)])
+        XPCommands.AddXP(users, message.author.id, channelXPRates[str(message.channel)])
         UpdateJson(users)
         await message.channel.send(":eagle:")
 
