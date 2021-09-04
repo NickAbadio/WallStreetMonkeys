@@ -13,10 +13,11 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN') #gets
 GUILD = os.getenv('DISCORD_GUILD')
 
-
 intents = discord.Intents.all() #gives discord bot the ability to get any info from the server
 client = discord.Client(intents=intents)
+guild = ""
 users = {}
+
 channelXPRates = {
     "general": 1,
     "gamers" : 5,
@@ -26,9 +27,9 @@ channelXPRates = {
 with open("servers.json") as f:
     users = json.load(f)
 
-
 @client.event
-async def on_ready():   #called on start of bot to make sure all users 
+async def on_ready():
+    global guild   #called on start of bot to make sure all users 
     guild = client.get_guild(849714682804961301) #gets WSM discord id (CURRENTLY USING BOT TESTING CHANNEL NOT WSM)
     memberlist = guild.members #gets a list of all WSM users (CURRENTLY USING BOT TESTING CHANNEL NOT WSM)
     for member in memberlist: 
@@ -39,11 +40,6 @@ async def on_ready():   #called on start of bot to make sure all users
                 "neededXP": 10,
             }
 
-
-
-
-
-
 #====================================================#
 #                   User Functions                   #
 #====================================================#
@@ -53,7 +49,6 @@ def UpdateJson(users):
     with open("servers.json","w") as f:
         json.dump(users, f, indent=2)
         print("Updated servers.json")
-
 
 def EmbedUserInfoMessage(message):
     embed = discord.Embed(
@@ -68,35 +63,41 @@ def EmbedUserInfoMessage(message):
 
     return embed
 
-        
-
-
-
-
 #====================================================#
 #                   Discord Message Commands         #
 #====================================================#
 
-
 @client.event       
 async def on_message(message): #on a new message in discord chat this is called
-
-    print(message)
     if message.author == client.user: #if the message comes from the bot ignore
         return
 
     elif (message.content.startswith('$User')): #command to print user info 
         embed = EmbedUserInfoMessage(message)
-
         await message.channel.send(embed=embed)
 
 
     else:   #command to add xp if the user command wasnt called and update the json
         XPCommands.AddXP(users, message.author.id, channelXPRates[str(message.channel)])
         UpdateJson(users)
+        for role in message.author.roles:
+            if role.name == "tester":
+                print("Role checking working")
+                break
         await message.channel.send(":eagle:")
 
-
+@client.event
+async def on_reaction_add(reaction,user):
+    if user.guild_permissions.kick_members:
+        if "PepeWat" in str(reaction):
+            print("is mod emoji")
+            print(reaction.message)
+            await reaction.message.clear_reaction(str(reaction))
+            channel = client.get_channel(880541130125611038)
+            await channel.send(guild.get_role(849768254427496478).mention)
+    await reaction.message.channel.send(str(reaction))
+    
+    
 
     
 
