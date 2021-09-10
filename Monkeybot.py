@@ -54,11 +54,33 @@ def AddMemberToJson(member):
                 "XP": 0,
                 "neededXP": 10,
             }
+
+            
 #updates the servers.json file with new data
 def UpdateJson(users):
     with open("servers.json","w") as f:
         json.dump(users, f, indent=2)
         print("Updated servers.json")
+
+def SetChannelXP(message):
+     if message.author.guild_permissions.kick_members and message.content.split()[1]:
+        try:
+            xpRate = float(message.content.split()[1])
+            serverInfo["channelXPRates"][str(message.channel.id)] = xpRate
+            print(serverInfo)
+        except:
+            print(message.content)
+
+def CallXPCommands(message):
+    if message.channel.id in serverInfo["channelXPRates"]:
+            XPCommands.AddXP(users, message.author.id, serverInfo["channelXPRates"][str(message.channel.id)])
+    else:
+        XPCommands.AddXP(users, message.author.id, 1)
+        UpdateJson(users)
+        for role in message.author.roles:
+            if role.name == "tester":
+                print("Role checking working")
+                break
 
 def EmbedUserInfoMessage(message):
     embed = discord.Embed(
@@ -91,22 +113,17 @@ async def on_message(message): #on a new message in discord chat this is called
     if message.author == client.user: #if the message comes from the bot ignore
         return
 
-    elif (message.content == ('$User')): #command to print user info 
+    elif (message.content == ("$User")): #command to print user info 
         embed = EmbedUserInfoMessage(message)
         await message.channel.send(embed=embed)
 
 
+    elif(message.content.startswith("$SetChannel")):
+        SetChannelXP(message)
+
+
     else:   #command to add xp if the user command wasnt called and update the json
-        if serverInfo["channelXPRates"[str(message.channel)]]:
-            XPCommands.AddXP(users, message.author.id, serverInfo["channelXPRates"[str(message.channel)]])
-        else:
-            XPCommands.AddXP(users, message.author.id, 1)
-            UpdateJson(users)
-            for role in message.author.roles:
-                if role.name == "tester":
-                    print("Role checking working")
-                    break
-            await message.channel.send(":eagle:")
+        CallXPCommands(message)
 
 @client.event
 async def on_reaction_add(reaction,user):
