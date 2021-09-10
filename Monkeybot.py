@@ -10,40 +10,50 @@ from dotenv import load_dotenv
 #====================================================#
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN') #gets
+TOKEN = os.getenv('DISCORD_TOKEN') 
 GUILD = os.getenv('DISCORD_GUILD')
 
 intents = discord.Intents.all() #gives discord bot the ability to get any info from the server
 client = discord.Client(intents=intents)
 guild = ""
 users = {}
-
-channelXPRates = {
-    "general": 1,
-    "gamers" : 5,
+serverInfo = {
+    "channelXPRates": {},
+    "modChannel": {},
 }
 
 #loads initial users dictionary is json data from servers.json
 with open("servers.json") as f:
-    users = json.load(f)
-
+    try:
+        users = json.load(f)
+    except:
+        print("No json save files")
 @client.event
 async def on_ready():
     global guild   #called on start of bot to make sure all users 
-    guild = client.get_guild(849714682804961301) #gets WSM discord id (CURRENTLY USING BOT TESTING CHANNEL NOT WSM)
+    guild = client.get_guild(820349556860256286) #gets WSM discord id (CURRENTLY USING BOT TESTING CHANNEL NOT WSM)
     memberlist = guild.members #gets a list of all WSM users (CURRENTLY USING BOT TESTING CHANNEL NOT WSM)
     for member in memberlist: 
-        if str(member.id) not in users.keys(): #goes through all users and checks if their in the json file if not adds them at level 1
-            users[str(member.id)] = {
-                "level": 1,
-                "XP": 0,
-                "neededXP": 10,
-            }
+        AddMemberToJson(member)
+       
+
+@client.event
+async def on_member_join(member):
+    await member.send("welcome")
+    AddMemberToJson(member)
+
 
 #====================================================#
 #                   User Functions                   #
 #====================================================#
 
+def AddMemberToJson(member):
+     if str(member.id) not in users.keys(): #goes through all users and checks if their in the json file if not adds them at level 1
+            users[str(member.id)] = {
+                "level": 1,
+                "XP": 0,
+                "neededXP": 10,
+            }
 #updates the servers.json file with new data
 def UpdateJson(users):
     with open("servers.json","w") as f:
@@ -58,8 +68,17 @@ def EmbedUserInfoMessage(message):
         )
     url = message.author.avatar_url
     embed.set_thumbnail(url=url)
+    
     embed.add_field(name='XP', value=users[str(message.author.id)]["XP"], inline=True)
     embed.add_field(name='XP needed', value=users[str(message.author.id)]["neededXP"], inline=True)
+    embed.add_field(name='Joined:', value=message.author.joined_at, inline=False)
+    
+    roles = []
+    for role in message.author.roles:
+        roles.append(role.mention)
+
+    embed.add_field(name='roles', value= "".join(roles[1:]), inline=False)
+
 
     return embed
 
@@ -72,19 +91,22 @@ async def on_message(message): #on a new message in discord chat this is called
     if message.author == client.user: #if the message comes from the bot ignore
         return
 
-    elif (message.content.startswith('$User')): #command to print user info 
+    elif (message.content == ('$User')): #command to print user info 
         embed = EmbedUserInfoMessage(message)
         await message.channel.send(embed=embed)
 
 
     else:   #command to add xp if the user command wasnt called and update the json
-        XPCommands.AddXP(users, message.author.id, channelXPRates[str(message.channel)])
-        UpdateJson(users)
-        for role in message.author.roles:
-            if role.name == "tester":
-                print("Role checking working")
-                break
-        await message.channel.send(":eagle:")
+        if serverInfo["channelXPRates"[str(message.channel)]]:
+            XPCommands.AddXP(users, message.author.id, serverInfo["channelXPRates"[str(message.channel)]])
+        else:
+            XPCommands.AddXP(users, message.author.id, 1)
+            UpdateJson(users)
+            for role in message.author.roles:
+                if role.name == "tester":
+                    print("Role checking working")
+                    break
+            await message.channel.send(":eagle:")
 
 @client.event
 async def on_reaction_add(reaction,user):
